@@ -132,13 +132,27 @@ if (genSentenceBtn) {
 
             const sentence = await generateSentence(prompt, apiKey);
             questionInput.value = sentence;
-            generatedAudioData = null; // reset any previously generated audio
 
-            genSentenceStatus.textContent = 'Done! You can edit if needed.';
+            // First, get the Chinese translation
+            const chinese = await translateToTraditionalChinese(sentence, apiKey);
+            answerInput.value = chinese;
+
+            // Next, attempt to produce TTS voice (non-critical)
+            let audioUrl = null;
+            try {
+                audioUrl = await generateTTS(sentence, apiKey);
+                generatedAudioData = audioUrl;
+            } catch (ttsErr) {
+                console.warn('TTS generation failed', ttsErr);
+            }
+
+            // Auto-save (even if audio failed)
+            autoSaveCard(sentence, chinese, audioUrl);
+
+            genSentenceStatus.textContent = audioUrl ? 'Card generated & saved!' : 'Card saved (no audio)';
         } catch (err) {
             console.error(err);
-            alert('Failed to generate sentence.');
-            genSentenceStatus.textContent = 'Error';
+            genSentenceStatus.textContent = 'Error generating. Check API key / quota.';
         } finally {
             genSentenceBtn.disabled = false;
             setTimeout(() => genSentenceStatus.classList.add('hidden'), 4000);
@@ -257,10 +271,8 @@ async function generateTTS(text, apiKey) {
     const payload = {
         model: 'tts-1',
         input: text,
-        // "alloy" is the male voice; OpenAI currently doesn’t expose accent control.
-        // For an Australian flavour, we prepend a short instruction (SSML) which the
-        // engine may respect if supported.
-        voice: 'alloy',
+        // Use "nova" (female voice)
+        voice: 'nova',
         format: 'mp3'
     };
 
@@ -302,12 +314,36 @@ const cardQuestionEl = document.getElementById('card-question');
 const cardAnswerEl = document.getElementById('card-answer');
 const revealArea = document.getElementById('reveal-area');
 const cardAudio = document.getElementById('card-audio');
+const audioToggleBtn = document.getElementById('audio-toggle-btn');
 const showAnswerBtn = document.getElementById('show-answer');
 const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const noDueEl = document.getElementById('no-due');
 const saveStatusEl = document.getElementById('save-status');
+
+function autoSaveCard(question, answer, audioData) {
+    if (editingCardId) {
+        updateExistingCard(editingCardId, question, answer, audioData);
+    } else {
+        createCard(question, answer, audioData);
+    }
+    showSavedStatus('Card saved!');
+}
+
+// utility to stop any ongoing audio and looping timer
+function stopAudio() {
+    clearTimeout(audioLoopTimeout);
+    audioLoopTimeout = null;
+    if (cardAudio) {
+        cardAudio.pause();
+        cardAudio.onended = null;
+        cardAudio.currentTime = 0;
+    }
+    if (audioToggleBtn) {
+        audioToggleBtn.textContent = 'Play Audio';
+    }
+}
 
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
@@ -334,7 +370,10 @@ function renderCardList() {
         return;
     }
 
-    cards.forEach((card) => {
+    // sort cards by days until next review (ascending)
+    const sortedCards = [...cards].sort((a, b) => a.nextReview - b.nextReview);
+
+    sortedCards.forEach((card) => {
         const li = document.createElement('li');
 
         const textSpan = document.createElement('span');
@@ -343,10 +382,30 @@ function renderCardList() {
 
         const btnContainer = document.createElement('span');
 
+        // days until due
+        const millisInDay = 24 * 60 * 60 * 1000;
+        const daysLeft = Math.max(0, Math.ceil((card.nextReview - Date.now()) / millisInDay));
+        const daysEl = document.createElement('span');
+        daysEl.textContent = `${daysLeft}d`;
+        daysEl.classList.add('days-left');
+        btnContainer.appendChild(daysEl);
+
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Edit';
         editBtn.classList.add('edit-btn');
         editBtn.addEventListener('click', () => beginEdit(card.id));
+        // play audio button
+        if (card.audioData) {
+            const playBtn = document.createElement('button');
+            playBtn.textContent = 'Play';
+            playBtn.classList.add('play-btn');
+            playBtn.addEventListener('click', () => {
+                const audio = new Audio(card.audioData);
+                audio.play();
+            });
+            btnContainer.appendChild(playBtn);
+        }
+
 
         const delBtn = document.createElement('button');
         delBtn.textContent = 'Delete';
@@ -408,6 +467,7 @@ studySection.classList.remove('hidden');
 
 // ---- Navigation ----
 navAdd.addEventListener('click', () => {
+    stopAudio();
     addSection.classList.remove('hidden');
     studySection.classList.add('hidden');
 });
@@ -579,10 +639,7 @@ function showNextCard() {
     showAnswerBtn.classList.remove('hidden');
 
     // stop any previous looping audio
-    clearTimeout(audioLoopTimeout);
-    audioLoopTimeout = null;
-    cardAudio.pause();
-    cardAudio.onended = null;
+    stopAudio();
 
     const dueCards = cards.filter((c) => c.nextReview <= Date.now());
     if (dueCards.length === 0) {
@@ -606,9 +663,16 @@ function showNextCard() {
         };
 
         cardAudio.play().catch(() => {/* autoplay might be blocked */});
+        if (audioToggleBtn) {
+            audioToggleBtn.classList.remove('hidden');
+            audioToggleBtn.textContent = 'Play Audio';
+        }
     } else {
         cardAudio.removeAttribute('src');
         cardAudio.load();
+        if (audioToggleBtn) {
+            audioToggleBtn.classList.add('hidden');
+        }
     }
 
     cardBox.classList.remove('hidden');
@@ -622,17 +686,33 @@ function revealAnswer() {
 // Reveal answer via question click or explicit button
 cardQuestionEl.addEventListener('click', revealAnswer);
 showAnswerBtn.addEventListener('click', revealAnswer);
+// Toggle play/stop for audio
+if (audioToggleBtn) {
+    audioToggleBtn.addEventListener('click', () => {
+        if (cardAudio.paused) {
+            cardAudio.play().catch(() => {});
+        } else {
+            stopAudio();
+        }
+    });
+    cardAudio.addEventListener('play', () => {
+        audioToggleBtn.textContent = 'Pause Audio';
+    });
+    cardAudio.addEventListener('pause', () => {
+        audioToggleBtn.textContent = 'Play Audio';
+    });
+}
 
 // rating buttons
 ratingButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
-        const rating = Number(btn.dataset.rating);
-        if (currentCard) {
-            processRating(currentCard, rating);
-            saveCards(cards);
-            updateDueCount();
-            showNextCard();
-        }
+        const value = btn.dataset.rating;
+        if (!currentCard) return;
+        const isEasy = value === 'easy';
+        processRatingBinary(currentCard, isEasy);
+        saveCards(cards);
+        updateDueCount();
+        showNextCard();
     });
 });
 
@@ -657,6 +737,31 @@ function processRating(card, quality) {
     }
     // set next review date
     const millisInDay = 24 * 60 * 60 * 1000;
+    card.nextReview = Date.now() + card.interval * millisInDay;
+}
+
+// Simplified 2-option algorithm (easy / hard)
+function processRatingBinary(card, isEasy) {
+    const millisInDay = 24 * 60 * 60 * 1000;
+
+    if (!isEasy) {
+        // Hard: reset learning cycle.
+        card.repetitions = 0;
+        card.interval = 1;
+        card.easeFactor = Math.max(1.3, card.easeFactor - 0.15);
+    } else {
+        // Easy: grow interval.
+        if (card.repetitions === 0) {
+            card.interval = 1;
+        } else if (card.repetitions === 1) {
+            card.interval = 3;
+        } else {
+            card.interval = Math.round(card.interval * card.easeFactor);
+        }
+        card.repetitions += 1;
+        card.easeFactor = Math.min(card.easeFactor + 0.05, 2.5);
+    }
+
     card.nextReview = Date.now() + card.interval * millisInDay;
 }
 

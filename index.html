@@ -38,8 +38,6 @@
                         English sentence<br />
                         <textarea id="question" required></textarea>
                     </label>
-                    <button type="button" id="generate-voice-trans-btn" class="secondary-btn">Generate Voice &amp; Chinese</button>
-                    <small id="gen-voice-status" class="hidden"></small>
                 </fieldset>
 
                 <label>
@@ -47,7 +45,7 @@
                     <textarea id="answer" required></textarea>
                 </label>
 
-                <button type="submit" id="save-card-btn" class="primary-btn">Save Card</button>
+                <button type="submit" id="save-card-btn" class="primary-btn hidden">Save Card</button>
                 <button type="button" id="cancel-edit-btn" class="hidden">Cancel</button>
                 <small id="save-status" class="hidden"></small>
             </form>
@@ -64,16 +62,15 @@
                 <button id="skip-day-btn" class="secondary-btn">Skip One Day</button>
                 <div id="card-box" class="hidden">
                     <p id="card-question"></p>
-                    <audio id="card-audio" controls></audio>
+                    <audio id="card-audio"></audio>
+                    <button id="audio-toggle-btn" class="secondary-btn hidden">Play Audio</button>
                     <button id="show-answer" class="primary-btn">Show Answer</button>
                     <div id="reveal-area" class="hidden">
                         <hr />
                         <p id="card-answer"></p>
                         <div class="rating-buttons">
-                            <button data-rating="0">Again</button>
-                            <button data-rating="3">Hard</button>
-                            <button data-rating="4">Good</button>
-                            <button data-rating="5">Easy</button>
+                            <button data-rating="easy" class="easy-btn">Easy</button>
+                            <button data-rating="hard" class="hard-btn">Hard</button>
                         </div>
                     </div>
                 </div>

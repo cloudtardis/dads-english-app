@@ -45,32 +45,33 @@ main section {
     display: none;
 }
 
-.rating-buttons button {
-    margin: 0.4rem;
-    padding: 0.7rem 1.2rem;
-    font-size: 1.05rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+
+.rating-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.8rem;
 }
 
-.rating-buttons button[data-rating="0"] {
+.rating-buttons button {
+    margin: 0;
+    padding: 0.9rem 1.6rem; /* larger touch target */
+    font-size: 1.2rem;      /* iPad friendly text */
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+
+.rating-buttons .hard-btn {
     background: #e74c3c;
     color: white;
 }
 
-.rating-buttons button[data-rating="3"] {
-    background: #f39c12;
-    color: white;
-}
-
-.rating-buttons button[data-rating="4"] {
+.rating-buttons .easy-btn {
     background: #27ae60;
-    color: white;
-}
-
-.rating-buttons button[data-rating="5"] {
-    background: #1abc9c;
     color: white;
 }
 
@@ -121,6 +122,17 @@ textarea {
     color: white;
 }
 
+#card-list .play-btn {
+    background: #4e73df;
+    color: white;
+}
+
+#card-list .days-left {
+    margin-right: 0.5rem;
+    font-weight: bold;
+    color: #555;
+}
+
 #cancel-edit-btn {
     margin-left: 0.5rem;
     padding: 0.4rem 0.8rem;
@@ -135,17 +147,36 @@ textarea {
 
 #card-question {
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1.5rem; /* increased for better readability */
 }
 
 #card-answer {
     margin-top: 0.5rem;
+    font-size: 1.3rem; /* larger traditional Chinese text */
+}
+
+#card-audio {
+    width: 100%;
+    margin-top: 0.8rem;
+    /* no custom accent — use browser default for simpler look */
+}
+
+/* Remove previous forced color on WebKit controls */
+audio::-webkit-media-controls-panel {
+    background-color: initial !important;
+}
+
+audio::-webkit-media-controls-play-button,
+audio::-webkit-media-controls-volume-slider,
+audio::-webkit-media-controls-time-remaining-display,
+audio::-webkit-media-controls-current-time-display {
+    filter: invert(1); /* make icons/text white for contrast */
 }
 
 #show-answer {
-    display: inline-block;
-    margin-top: 1rem;
-    padding: 0.6rem 1.4rem;
+    display: block;
+    margin: 1rem auto 0;
+    padding: 0.7rem 1.6rem;
     font-size: 1.1rem;
     background: #4e73df;
     color: white;
@@ -172,6 +203,10 @@ textarea {
     margin-left: 0.6rem;
     font-style: italic;
     color: #27ae60;
+}
+
+button.hidden {
+    display: none;
 }
 
 /* Secondary action buttons */
@@ -225,4 +260,9 @@ footer {
     background: #fafafa;
     color: #555;
     font-size: 0.9rem;
+}
+
+/* Hide default browser audio controls; playback is managed via our custom toggle */
+#card-audio {
+    display: none;
 }
