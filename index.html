@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Spaced-Repetition Flashcards</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <header>
+        <h1>Spaced-Repetition Flashcards</h1>
+        <nav>
+            <button id="nav-add">Add Cards</button>
+            <button id="nav-study">Study</button>
+            <button id="nav-export">Export Json</button>
+            <button id="nav-import">Import Json</button>
+            <input type="file" id="import-file" accept="application/json" hidden />
+        </nav>
+    </header>
+
+    <main>
+        <!-- Add card section -->
+        <section id="add-section" class="active">
+            <h2>Add / Edit Card</h2>
+            <form id="card-form">
+                <label>
+                    Question<br />
+                    <textarea id="question" required></textarea>
+                </label>
+                <label>
+                    Answer<br />
+                    <textarea id="answer" required></textarea>
+                </label>
+                <label>
+                    Optional Audio File (will loop during study)
+                    <input type="file" id="audio" accept="audio/*" />
+                </label>
+                <button type="submit">Save Card</button>
+            </form>
+            <p class="note">Cards are stored locally in your browser (LocalStorage).</p>
+        </section>
+
+        <!-- Study section -->
+        <section id="study-section" class="hidden">
+            <h2>Study</h2>
+            <div id="study-area">
+                <p id="due-count"></p>
+                <div id="card-box" class="hidden">
+                    <p id="card-question"></p>
+                    <div id="reveal-area" class="hidden">
+                        <hr />
+                        <p id="card-answer"></p>
+                        <audio id="card-audio" controls loop></audio>
+                        <div class="rating-buttons">
+                            <button data-rating="0">Again</button>
+                            <button data-rating="3">Hard</button>
+                            <button data-rating="4">Good</button>
+                            <button data-rating="5">Easy</button>
+                        </div>
+                    </div>
+                </div>
+                <p id="no-due" class="hidden">No cards are due right now 🎉</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <small>
+            All data is stored in your own browser. You can export/import JSON for backup.
+        </small>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
