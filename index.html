@@ -10,17 +10,17 @@
     <header>
         <h1>Spaced-Repetition Flashcards</h1>
         <nav>
-            <button id="nav-add">Add Cards</button>
             <button id="nav-study">Study</button>
-            <button id="nav-export">Export Json</button>
-            <button id="nav-import">Import Json</button>
+            <button id="nav-add">Add Cards</button>
+            <button id="nav-export" class="small-nav">Export</button>
+            <button id="nav-import" class="small-nav">Import</button>
             <input type="file" id="import-file" accept="application/json" hidden />
         </nav>
     </header>
 
     <main>
         <!-- Add card section -->
-        <section id="add-section" class="active">
+        <section id="add-section" class="hidden">
             <h2>Add / Edit Card</h2>
             <form id="card-form">
                 <!-- AI-assisted card creation -->
@@ -47,8 +47,9 @@
                     <textarea id="answer" required></textarea>
                 </label>
 
-                <button type="submit" id="save-card-btn">Save Card</button>
+                <button type="submit" id="save-card-btn" class="primary-btn">Save Card</button>
                 <button type="button" id="cancel-edit-btn" class="hidden">Cancel</button>
+                <small id="save-status" class="hidden"></small>
             </form>
             <h3>Your Cards</h3>
             <ul id="card-list"></ul>
@@ -56,7 +57,7 @@
         </section>
 
         <!-- Study section -->
-        <section id="study-section" class="hidden">
+        <section id="study-section" class="active">
             <h2>Study</h2>
             <div id="study-area">
                 <p id="due-count"></p>

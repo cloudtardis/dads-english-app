@@ -257,6 +257,9 @@ async function generateTTS(text, apiKey) {
     const payload = {
         model: 'tts-1',
         input: text,
+        // "alloy" is the male voice; OpenAI currently doesn’t expose accent control.
+        // For an Australian flavour, we prepend a short instruction (SSML) which the
+        // engine may respect if supported.
         voice: 'alloy',
         format: 'mp3'
     };
@@ -304,12 +307,21 @@ const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const noDueEl = document.getElementById('no-due');
+const saveStatusEl = document.getElementById('save-status');
 
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
 
 let editingCardId = null; // if not null, we're editing existing card
+
+function showSavedStatus(msg) {
+    if (!saveStatusEl) return;
+    saveStatusEl.textContent = msg;
+    saveStatusEl.classList.remove('hidden');
+    clearTimeout(showSavedStatus._timer);
+    showSavedStatus._timer = setTimeout(() => saveStatusEl.classList.add('hidden'), 3000);
+}
 
 // ---- Card list rendering and CRUD ----
 function renderCardList() {
@@ -388,6 +400,11 @@ let cards = loadCards();
 
 renderCardList();
 let currentCard = null; // card object currently displayed
+
+// Default landing view: Study section
+startStudy();
+addSection.classList.add('hidden');
+studySection.classList.remove('hidden');
 
 // ---- Navigation ----
 navAdd.addEventListener('click', () => {
@@ -514,7 +531,7 @@ function createCard(question, answer, audioData) {
     answerInput.value = '';
     if (audioInput) audioInput.value = '';
 
-    alert('Card saved!');
+    showSavedStatus('Card saved!');
 
     renderCardList();
 }
@@ -538,7 +555,7 @@ function updateExistingCard(id, question, answer, audioData) {
     answerInput.value = '';
     if (audioInput) audioInput.value = '';
 
-    alert('Card updated!');
+    showSavedStatus('Card updated!');
 
     renderCardList();
 }

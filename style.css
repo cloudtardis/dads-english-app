@@ -22,6 +22,16 @@ nav button {
     border-radius: 4px;
 }
 
+nav button.small-nav {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.6rem;
+    background: #5a6abf;
+}
+
+nav button.small-nav:hover {
+    background: #4b5ab0;
+}
+
 nav button:hover {
     background: #193798;
 }
@@ -154,6 +164,14 @@ textarea {
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    padding: 0.6rem 1.4rem;
+    font-size: 1.05rem;
+}
+
+#save-status {
+    margin-left: 0.6rem;
+    font-style: italic;
+    color: #27ae60;
 }
 
 /* Secondary action buttons */
