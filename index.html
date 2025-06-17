@@ -23,20 +23,32 @@
         <section id="add-section" class="active">
             <h2>Add / Edit Card</h2>
             <form id="card-form">
+                <!-- AI-assisted card creation -->
+                <fieldset class="ai-tools">
+                    <label>
+                        Prompt / topic for the sentence<br />
+                        <textarea id="prompt"></textarea>
+                    </label>
+                    <button type="button" id="generate-sentence-btn" class="secondary-btn">Generate Sentence</button>
+                    <small id="gen-sentence-status" class="hidden"></small>
+
+                    <hr />
+
+                    <label>
+                        English sentence<br />
+                        <textarea id="question" required></textarea>
+                    </label>
+                    <button type="button" id="generate-voice-trans-btn" class="secondary-btn">Generate Voice &amp; Chinese</button>
+                    <small id="gen-voice-status" class="hidden"></small>
+                </fieldset>
+
                 <label>
-                    Question<br />
-                    <textarea id="question" required></textarea>
-                </label>
-                <div class="inline-audio-tools">
-                    <button type="button" id="generate-audio-btn" class="secondary-btn">Generate Voice with AI</button>
-                    <small id="generate-status" class="hidden">Generating…</small>
-                </div>
-                <label>
-                    Answer<br />
+                    Traditional Chinese translation (you can edit afterwards)<br />
                     <textarea id="answer" required></textarea>
                 </label>
+
                 <label>
-                    Optional Audio File (will loop during study)
+                    Optional custom audio file (overrides generated voice)
                     <input type="file" id="audio" accept="audio/*" />
                 </label>
                 <button type="submit" id="save-card-btn">Save Card</button>

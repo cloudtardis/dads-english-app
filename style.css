@@ -175,6 +175,25 @@ textarea {
     margin: 0.5rem 0 1rem;
 }
 
+.ai-tools {
+    margin-bottom: 1rem;
+    border: 1px solid #eee;
+    padding: 0.8rem;
+    border-radius: 6px;
+    background: #fafafa;
+}
+#gen-sentence-status, #gen-voice-status {
+    margin-left: 0.5rem;
+    font-style: italic;
+    color: #666;
+}
+
+.ai-tools hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 1rem 0;
+}
+
 #generate-status {
     margin-left: 0.5rem;
     font-style: italic;

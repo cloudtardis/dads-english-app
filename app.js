@@ -53,6 +53,13 @@ const audioInput = document.getElementById('audio');
 const generateAudioBtn = document.getElementById('generate-audio-btn');
 const generateStatus = document.getElementById('generate-status');
 
+// New elements for advanced AI flow
+const promptInput = document.getElementById('prompt');
+const genSentenceBtn = document.getElementById('generate-sentence-btn');
+const genSentenceStatus = document.getElementById('gen-sentence-status');
+const genVoiceBtn = document.getElementById('generate-voice-trans-btn');
+const genVoiceStatus = document.getElementById('gen-voice-status');
+
 let generatedAudioData = null; // dataURL produced by AI TTS if any
 
 // ---- AI Text-to-Speech generation ----
@@ -93,6 +100,146 @@ if (generateAudioBtn) {
             setTimeout(() => generateStatus.classList.add('hidden'), 4000);
         }
     });
+}
+
+// ---- Generate English sentence from prompt ----
+if (genSentenceBtn) {
+    genSentenceBtn.addEventListener('click', async () => {
+        const prompt = promptInput.value.trim();
+        if (!prompt) {
+            alert('Please type a prompt/topic first.');
+            return;
+        }
+
+        let apiKey = getApiKey();
+        if (!apiKey) return;
+
+        try {
+            genSentenceStatus.classList.remove('hidden');
+            genSentenceStatus.textContent = 'Generating…';
+            genSentenceBtn.disabled = true;
+
+            const sentence = await generateSentence(prompt, apiKey);
+            questionInput.value = sentence;
+            generatedAudioData = null; // reset any previously generated audio
+
+            genSentenceStatus.textContent = 'Done! You can edit if needed.';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate sentence.');
+            genSentenceStatus.textContent = 'Error';
+        } finally {
+            genSentenceBtn.disabled = false;
+            setTimeout(() => genSentenceStatus.classList.add('hidden'), 4000);
+        }
+    });
+}
+
+// ---- Generate voice + Chinese translation ----
+if (genVoiceBtn) {
+    genVoiceBtn.addEventListener('click', async () => {
+        const sentence = questionInput.value.trim();
+        if (!sentence) {
+            alert('Please ensure the English sentence is filled.');
+            return;
+        }
+
+        let apiKey = getApiKey();
+        if (!apiKey) return;
+
+        try {
+            genVoiceStatus.classList.remove('hidden');
+            genVoiceStatus.textContent = 'Generating…';
+            genVoiceBtn.disabled = true;
+
+            // Parallel generation
+            const [audioUrl, chinese] = await Promise.all([
+                generateTTS(sentence, apiKey),
+                translateToTraditionalChinese(sentence, apiKey)
+            ]);
+
+            generatedAudioData = audioUrl;
+            audioInput.value = '';
+            answerInput.value = chinese;
+
+            genVoiceStatus.textContent = 'Voice & translation ready!';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate voice/translation.');
+            genVoiceStatus.textContent = 'Error';
+        } finally {
+            genVoiceBtn.disabled = false;
+            setTimeout(() => genVoiceStatus.classList.add('hidden'), 4000);
+        }
+    });
+}
+
+function getApiKey() {
+    let key = localStorage.getItem('openai_api_key');
+    if (!key) {
+        key = prompt('Enter your OpenAI API key (it will be stored locally):');
+        if (key) localStorage.setItem('openai_api_key', key);
+    }
+    return key;
+}
+
+async function generateSentence(prompt, apiKey) {
+    const payload = {
+        model: 'gpt-3.5-turbo',
+        messages: [
+            { role: 'system', content: 'You are an assistant who creates single medium-length English sentences suitable for ESL learners.' },
+            { role: 'user', content: `Create one medium-length English sentence (15-20 words) based on: "${prompt}". Do NOT include translations. Do NOT wrap in quotes.` }
+        ],
+        max_tokens: 60,
+        temperature: 0.7
+    };
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error('OpenAI completion failed: ' + errText);
+    }
+
+    const data = await resp.json();
+    const sentence = data.choices[0].message.content.trim();
+    return sentence;
+}
+
+async function translateToTraditionalChinese(text, apiKey) {
+    const payload = {
+        model: 'gpt-3.5-turbo',
+        messages: [
+            { role: 'system', content: 'You translate English to Traditional Chinese.' },
+            { role: 'user', content: `Translate the following sentence into Traditional Chinese only (no pinyin): \n"${text}"` }
+        ],
+        max_tokens: 90,
+        temperature: 0.3
+    };
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error('OpenAI completion failed: ' + errText);
+    }
+
+    const data = await resp.json();
+    return data.choices[0].message.content.trim();
 }
 
 async function generateTTS(text, apiKey) {
@@ -351,6 +498,7 @@ function createCard(question, answer, audioData) {
     saveCards(cards);
 
     // reset form
+    if (promptInput) promptInput.value = '';
     questionInput.value = '';
     answerInput.value = '';
     audioInput.value = '';
