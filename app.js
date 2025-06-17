@@ -50,6 +50,87 @@ const importFileInput = document.getElementById('import-file');
 const questionInput = document.getElementById('question');
 const answerInput = document.getElementById('answer');
 const audioInput = document.getElementById('audio');
+const generateAudioBtn = document.getElementById('generate-audio-btn');
+const generateStatus = document.getElementById('generate-status');
+
+let generatedAudioData = null; // dataURL produced by AI TTS if any
+
+// ---- AI Text-to-Speech generation ----
+if (generateAudioBtn) {
+    generateAudioBtn.addEventListener('click', async () => {
+        const text = questionInput.value.trim();
+        if (!text) {
+            alert('Please type a question/sentence first.');
+            return;
+        }
+
+        // Ask for API key (stored in LocalStorage for convenience)
+        let apiKey = localStorage.getItem('openai_api_key');
+        if (!apiKey) {
+            apiKey = prompt('Enter your OpenAI API key (it will be stored locally):');
+            if (!apiKey) return;
+            localStorage.setItem('openai_api_key', apiKey);
+        }
+
+        try {
+            generateStatus.classList.remove('hidden');
+            generateStatus.textContent = 'Generating…';
+            generateAudioBtn.disabled = true;
+
+            const dataUrl = await generateTTS(text, apiKey);
+            generatedAudioData = dataUrl;
+
+            // Clear any file selection to avoid confusion
+            audioInput.value = '';
+
+            generateStatus.textContent = 'Voice ready! (will be attached)';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate audio.');
+            generateStatus.textContent = 'Error';
+        } finally {
+            generateAudioBtn.disabled = false;
+            setTimeout(() => generateStatus.classList.add('hidden'), 4000);
+        }
+    });
+}
+
+async function generateTTS(text, apiKey) {
+    const payload = {
+        model: 'tts-1',
+        input: text,
+        voice: 'alloy',
+        format: 'mp3'
+    };
+
+    const resp = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error('OpenAI TTS failed: ' + errText);
+    }
+
+    const arrayBuffer = await resp.arrayBuffer();
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    return `data:audio/mp3;base64,${base64}`;
+}
+
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
 
 const form = document.getElementById('card-form');
 
@@ -222,9 +303,7 @@ form.addEventListener('submit', (e) => {
     const answer = answerInput.value.trim();
     if (!question || !answer) return;
 
-    const file = audioInput.files[0];
-
-    // If we're editing an existing card, update it; otherwise create new.
+    // Helper that actually saves/updates the card
     const handleData = (audioData) => {
         if (editingCardId) {
             updateExistingCard(editingCardId, question, answer, audioData);
@@ -232,6 +311,15 @@ form.addEventListener('submit', (e) => {
             createCard(question, answer, audioData);
         }
     };
+
+    const file = audioInput.files[0];
+
+    // If AI generated voice exists, use it regardless of file selection
+    if (generatedAudioData) {
+        handleData(generatedAudioData);
+        generatedAudioData = null; // reset for next card
+        return;
+    }
 
     if (file) {
         const reader = new FileReader();

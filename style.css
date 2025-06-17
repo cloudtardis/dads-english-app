@@ -171,6 +171,16 @@ textarea {
     background: #c5c5c5;
 }
 
+.inline-audio-tools {
+    margin: 0.5rem 0 1rem;
+}
+
+#generate-status {
+    margin-left: 0.5rem;
+    font-style: italic;
+    color: #666;
+}
+
 footer {
     text-align: center;
     margin-top: 2rem;
