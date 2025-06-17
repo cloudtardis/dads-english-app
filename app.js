@@ -49,7 +49,7 @@ const importFileInput = document.getElementById('import-file');
 
 const questionInput = document.getElementById('question');
 const answerInput = document.getElementById('answer');
-const audioInput = document.getElementById('audio');
+const audioInput = document.getElementById('audio'); // may be null if upload option removed
 const generateAudioBtn = document.getElementById('generate-audio-btn');
 const generateStatus = document.getElementById('generate-status');
 
@@ -61,6 +61,17 @@ const genVoiceBtn = document.getElementById('generate-voice-trans-btn');
 const genVoiceStatus = document.getElementById('gen-voice-status');
 
 let generatedAudioData = null; // dataURL produced by AI TTS if any
+
+// Utility: fetch with a timeout to avoid indefinite waiting
+async function fetchWithTimeout(url, options = {}, timeout = 20000) {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), timeout);
+    try {
+        return await fetch(url, { ...options, signal: ctrl.signal });
+    } finally {
+        clearTimeout(id);
+    }
+}
 
 // ---- AI Text-to-Speech generation ----
 if (generateAudioBtn) {
@@ -88,7 +99,7 @@ if (generateAudioBtn) {
             generatedAudioData = dataUrl;
 
             // Clear any file selection to avoid confusion
-            audioInput.value = '';
+            if (audioInput) audioInput.value = '';
 
             generateStatus.textContent = 'Voice ready! (will be attached)';
         } catch (err) {
@@ -159,7 +170,7 @@ if (genVoiceBtn) {
             ]);
 
             generatedAudioData = audioUrl;
-            audioInput.value = '';
+            if (audioInput) audioInput.value = '';
             answerInput.value = chinese;
 
             genVoiceStatus.textContent = 'Voice & translation ready!';
@@ -194,7 +205,7 @@ async function generateSentence(prompt, apiKey) {
         temperature: 0.7
     };
 
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -224,7 +235,7 @@ async function translateToTraditionalChinese(text, apiKey) {
         temperature: 0.3
     };
 
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -250,7 +261,7 @@ async function generateTTS(text, apiKey) {
         format: 'mp3'
     };
 
-    const resp = await fetch('https://api.openai.com/v1/audio/speech', {
+    const resp = await fetchWithTimeout('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -344,7 +355,7 @@ function beginEdit(id) {
     editingCardId = id;
     questionInput.value = card.question;
     answerInput.value = card.answer;
-    audioInput.value = '';
+    if (audioInput) audioInput.value = '';
 
     saveCardBtn.textContent = 'Update Card';
     cancelEditBtn.classList.remove('hidden');
@@ -367,7 +378,7 @@ if (cancelEditBtn) {
         editingCardId = null;
         questionInput.value = '';
         answerInput.value = '';
-        audioInput.value = '';
+        if (audioInput) audioInput.value = '';
         saveCardBtn.textContent = 'Save Card';
         cancelEditBtn.classList.add('hidden');
     });
@@ -459,7 +470,7 @@ form.addEventListener('submit', (e) => {
         }
     };
 
-    const file = audioInput.files[0];
+    const file = audioInput ? audioInput.files[0] : null;
 
     // If AI generated voice exists, use it regardless of file selection
     if (generatedAudioData) {
@@ -501,7 +512,7 @@ function createCard(question, answer, audioData) {
     if (promptInput) promptInput.value = '';
     questionInput.value = '';
     answerInput.value = '';
-    audioInput.value = '';
+    if (audioInput) audioInput.value = '';
 
     alert('Card saved!');
 
@@ -525,7 +536,7 @@ function updateExistingCard(id, question, answer, audioData) {
     // reset form inputs
     questionInput.value = '';
     answerInput.value = '';
-    audioInput.value = '';
+    if (audioInput) audioInput.value = '';
 
     alert('Card updated!');
 
