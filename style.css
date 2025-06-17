@@ -36,9 +36,9 @@ main section {
 }
 
 .rating-buttons button {
-    margin: 0.3rem;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
+    margin: 0.4rem;
+    padding: 0.7rem 1.2rem;
+    font-size: 1.05rem;
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -75,6 +75,47 @@ textarea {
     margin-bottom: 0.5rem;
 }
 
+#card-list {
+    list-style: none;
+    padding: 0;
+}
+
+#card-list li {
+    background: #fff;
+    margin: 0.3rem 0;
+    padding: 0.6rem;
+    border-radius: 6px;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+#card-list button {
+    margin-left: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#card-list .edit-btn {
+    background: #27ae60;
+    color: white;
+}
+
+#card-list .delete-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+#cancel-edit-btn {
+    margin-left: 0.5rem;
+    padding: 0.4rem 0.8rem;
+}
+
 #card-box {
     background: white;
     padding: 1rem;
@@ -89,6 +130,45 @@ textarea {
 
 #card-answer {
     margin-top: 0.5rem;
+}
+
+#show-answer {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.6rem 1.4rem;
+    font-size: 1.1rem;
+    background: #4e73df;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#show-answer:hover {
+    background: #3753b4;
+}
+
+.primary-btn {
+    background: #4e73df;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Secondary action buttons */
+.secondary-btn {
+    background: #ddd;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+}
+
+.secondary-btn:hover {
+    background: #c5c5c5;
 }
 
 footer {
