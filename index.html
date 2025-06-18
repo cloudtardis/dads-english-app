@@ -29,15 +29,19 @@
                         Prompt / topic for the sentence<br />
                         <textarea id="prompt"></textarea>
                     </label>
-                    <button type="button" id="generate-sentence-btn" class="secondary-btn">Generate Sentence</button>
+                    <button type="button" id="generate-sentence-btn" class="secondary-btn">Generate Paragraph</button>
                     <small id="gen-sentence-status" class="hidden"></small>
 
                     <hr />
 
                     <label>
-                        English sentence<br />
+                        English paragraph<br />
                         <textarea id="question" required></textarea>
                     </label>
+                    <button type="button" id="generate-paragraph-voice-btn" class="secondary-btn">Generate Voice</button>
+                    <small id="gen-paragraph-voice-status" class="hidden"></small>
+                    <button type="button" id="generate-paragraph-translation-btn" class="secondary-btn">Generate Translation</button>
+                    <small id="gen-paragraph-translation-status" class="hidden"></small>
                 </fieldset>
 
                 <label>
@@ -52,7 +56,7 @@
                     </label>
                 </div>
 
-                <button type="submit" id="save-card-btn" class="primary-btn">Save Card</button>
+                <button type="button" id="save-card-btn" class="primary-btn">Save Card</button>
                 <button type="button" id="cancel-edit-btn" class="hidden">Cancel</button>
                 <small id="save-status" class="hidden"></small>
             </form>
