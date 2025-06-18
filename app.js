@@ -482,6 +482,7 @@ const revealArea = document.getElementById('reveal-area');
 const cardAudio = document.getElementById('card-audio');
 const audioToggleBtn = document.getElementById('audio-toggle-btn');
 const rewindBtn = document.getElementById('rewind-5-btn');
+const restartBtn = document.getElementById('restart-btn');
 const showAnswerBtn = document.getElementById('show-answer');
 const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
@@ -856,6 +857,9 @@ function showNextCard() {
         if (rewindBtn) {
             rewindBtn.classList.remove('hidden');
         }
+        if (restartBtn) {
+            restartBtn.classList.remove('hidden');
+        }
     } else {
         cardAudio.removeAttribute('src');
         cardAudio.load();
@@ -864,6 +868,9 @@ function showNextCard() {
         }
         if (rewindBtn) {
             rewindBtn.classList.add('hidden');
+        }
+        if (restartBtn) {
+            restartBtn.classList.add('hidden');
         }
     }
 
@@ -905,6 +912,17 @@ if (rewindBtn) {
     rewindBtn.addEventListener('click', () => {
         if (!cardAudio.duration) return;
         cardAudio.currentTime = Math.max(0, cardAudio.currentTime - 5);
+    });
+}
+
+// Restart button (jump to beginning)
+if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+        if (!cardAudio.duration) return;
+        cardAudio.currentTime = 0;
+        if (!cardAudio.paused) {
+            cardAudio.play().catch(() => {});
+        }
     });
 }
 
