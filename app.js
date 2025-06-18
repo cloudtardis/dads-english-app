@@ -481,6 +481,7 @@ const cardAnswerEl = document.getElementById('card-answer');
 const revealArea = document.getElementById('reveal-area');
 const cardAudio = document.getElementById('card-audio');
 const audioToggleBtn = document.getElementById('audio-toggle-btn');
+const rewindBtn = document.getElementById('rewind-5-btn');
 const showAnswerBtn = document.getElementById('show-answer');
 const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
@@ -507,8 +508,10 @@ function stopAudio() {
         cardAudio.currentTime = 0;
     }
     if (audioToggleBtn) {
-        audioToggleBtn.textContent = 'Play Audio';
+        audioToggleBtn.textContent = '▶️';
     }
+
+
 }
 
 // helper to set up looping playback with 5s pause between repeats
@@ -848,13 +851,19 @@ function showNextCard() {
         cardAudio.play().catch(() => {/* autoplay might be blocked */});
         if (audioToggleBtn) {
             audioToggleBtn.classList.remove('hidden');
-            audioToggleBtn.textContent = 'Play Audio';
+            audioToggleBtn.textContent = '▶️';
+        }
+        if (rewindBtn) {
+            rewindBtn.classList.remove('hidden');
         }
     } else {
         cardAudio.removeAttribute('src');
         cardAudio.load();
         if (audioToggleBtn) {
             audioToggleBtn.classList.add('hidden');
+        }
+        if (rewindBtn) {
+            rewindBtn.classList.add('hidden');
         }
     }
 
@@ -880,10 +889,18 @@ if (audioToggleBtn) {
         }
     });
     cardAudio.addEventListener('play', () => {
-        audioToggleBtn.textContent = 'Pause Audio';
+        audioToggleBtn.textContent = '⏸️';
     });
     cardAudio.addEventListener('pause', () => {
-        audioToggleBtn.textContent = 'Play Audio';
+        audioToggleBtn.textContent = '▶️';
+    });
+}
+
+// Rewind 5 seconds button
+if (rewindBtn) {
+    rewindBtn.addEventListener('click', () => {
+        if (!cardAudio.duration) return;
+        cardAudio.currentTime = Math.max(0, cardAudio.currentTime - 5);
     });
 }
 

@@ -12,19 +12,27 @@ header {
     margin-bottom: 1rem;
 }
 
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 nav button {
-    margin-right: 0.5rem;
-    padding: 0.3rem 0.7rem;
+    margin-right: 0.6rem;
+    padding: 0.6rem 1.4rem; /* larger touch target on tablets */
     border: none;
     background: #224abe;
     color: white;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
+    font-size: 1.1rem;
 }
 
 nav button.small-nav {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.6rem;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
     background: #5a6abf;
 }
 
@@ -173,6 +181,13 @@ audio::-webkit-media-controls-current-time-display {
     filter: invert(1); /* make icons/text white for contrast */
 }
 
+/* Layout for inline audio buttons */
+.audio-controls {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+}
+
 #show-answer {
     display: block;
     margin: 1rem auto 0;
@@ -195,8 +210,8 @@ audio::-webkit-media-controls-current-time-display {
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    padding: 0.6rem 1.4rem;
-    font-size: 1.05rem;
+    padding: 0.9rem 1.8rem;
+    font-size: 1.25rem;
 }
 
 #save-status {
@@ -215,8 +230,9 @@ button.hidden {
     color: #333;
     border: none;
     border-radius: 6px;
-    padding: 0.5rem 1.2rem;
+    padding: 0.8rem 1.6rem;
     cursor: pointer;
+    font-size: 1.1rem;
     margin-top: 0.5rem;
 }
 
