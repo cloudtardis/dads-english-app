@@ -384,18 +384,9 @@ async function translateToTraditionalChinese(text, apiKey) {
 
     const CHUNK_SIZE = 3500;
     const chunks = [];
-    let buffer = '';
-
-    for (const line of text.split(/\n+/)) {
-        if (buffer.length + line.length + 1 > CHUNK_SIZE) {
-            if (buffer) {
-                chunks.push(buffer);
-                buffer = '';
-            }
-        }
-        buffer += (buffer ? '\n' : '') + line;
+    for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+        chunks.push(text.slice(i, i + CHUNK_SIZE));
     }
-    if (buffer) chunks.push(buffer);
 
     const translations = [];
     for (const chunk of chunks) {
@@ -439,10 +430,15 @@ async function translateChunk(englishText, apiKey) {
 
 async function generateTTS(text, apiKey) {
     const payload = {
-        model: 'tts-1',
+        // Higher-fidelity model
+        model: 'tts-1-hd',
         input: text,
-        // Use "nova" (female voice)
-        voice: 'nova',
+        // Upbeat female voice
+        voice: 'shimmer',
+        // Slightly higher pitch for extra brightness
+        voice_preset: {
+            pitch: 4  // +4 semitones for a younger, lighter tone
+        },
         format: 'mp3'
     };
 
