@@ -45,7 +45,14 @@
                     <textarea id="answer" required></textarea>
                 </label>
 
-                <button type="submit" id="save-card-btn" class="primary-btn hidden">Save Card</button>
+                <div class="inline-audio-tools">
+                    <label>
+                        Optional audio file
+                        <input type="file" id="audio" accept="audio/*" />
+                    </label>
+                </div>
+
+                <button type="submit" id="save-card-btn" class="primary-btn">Save Card</button>
                 <button type="button" id="cancel-edit-btn" class="hidden">Cancel</button>
                 <small id="save-status" class="hidden"></small>
             </form>

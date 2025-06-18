@@ -146,10 +146,7 @@ if (genSentenceBtn) {
                 console.warn('TTS generation failed', ttsErr);
             }
 
-            // Auto-save (even if audio failed)
-            autoSaveCard(sentence, chinese, audioUrl);
-
-            genSentenceStatus.textContent = audioUrl ? 'Card generated & saved!' : 'Card saved (no audio)';
+            genSentenceStatus.textContent = audioUrl ? 'Sentence & audio ready. Click Save.' : 'Sentence ready. Click Save.';
         } catch (err) {
             console.error(err);
             genSentenceStatus.textContent = 'Error generating. Check API key / quota.';
@@ -549,17 +546,13 @@ form.addEventListener('submit', (e) => {
 
     const file = audioInput ? audioInput.files[0] : null;
 
-    // If AI generated voice exists, use it regardless of file selection
-    if (generatedAudioData) {
-        handleData(generatedAudioData);
-        generatedAudioData = null; // reset for next card
-        return;
-    }
-
     if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => handleData(ev.target.result);
         reader.readAsDataURL(file);
+    } else if (generatedAudioData) {
+        handleData(generatedAudioData);
+        generatedAudioData = null; // reset for next card
     } else {
         // if no new file picked and editing, keep previous audioData
         if (editingCardId) {
