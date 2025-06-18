@@ -383,7 +383,8 @@ async function translateToTraditionalChinese(text, apiKey) {
             { role: 'system', content: 'You translate English to Traditional Chinese.' },
             { role: 'user', content: `Translate the following paragraph into Traditional Chinese only (no pinyin): \n"${text}"` }
         ],
-        max_tokens: 180,
+        // Provide ample token allowance so long paragraphs are fully translated.
+        max_tokens: 800,
         temperature: 0.3
     };
 
