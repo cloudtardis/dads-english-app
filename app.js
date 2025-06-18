@@ -1,49 +1,95 @@
 // Simple spaced-repetition using SM-2 algorithm
 
-const STORAGE_KEY = 'flashcards-v1';
+
+// --- Persistence (IndexedDB) -------------------------------------------------
+
+// All card data is now stored inside the browser's IndexedDB instead of
+// LocalStorage so we can scale beyond the 5 MB quota and avoid synchronous
+// blocking calls.
+
+const DB_NAME = 'flashcards-db';
+const DB_VERSION = 1;
+const STORE_NAME = 'cards';
 
 /**
- * Load all stored cards from localStorage.
- * @returns {Flashcard[]} Array of cards
+ * Open (or create) the app database. On first run it provisions an object
+ * store using `id` as the primary key.
+ *
+ * @returns {Promise<IDBDatabase>}
  */
-function loadCards() {
+function openDB() {
+    if (!('indexedDB' in window)) {
+        return Promise.reject(new Error('IndexedDB is not supported in this environment'));
+    }
+
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * Load all stored cards from IndexedDB.
+ *
+ * @returns {Promise<Flashcard[]>} Array of cards (may be empty)
+ */
+async function loadCards() {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return [];
-        return JSON.parse(raw);
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
     } catch (err) {
-        console.error('Error loading cards', err);
+        console.error('Error loading cards from IndexedDB', err);
         return [];
     }
 }
 
 /**
- * Persist cards array to localStorage
- * @param {Flashcard[]} cards
- */
-/**
- * Safely persist cards to localStorage. In environments where the Storage
- * quota is unavailable (e.g. private-browsing in Safari / iOS) any attempt to
- * write will throw a `DOMException`. Instead of letting the error bubble up –
- * which would break the "Save Card" button with no feedback – we catch the
- * exception and fall back to keeping the data only in-memory for the current
- * session.  A visible warning is displayed so the user understands why the
- * card is not being retained between sessions.
+ * Persist the provided set of cards to IndexedDB. The strategy is simple but
+ * robust: clear the store and then put all current cards. For the modest data
+ * sizes of a flash-card deck this is fast and keeps the logic trivial.
+ *
+ * Any failure is logged and surfaced to the user once per session.
  *
  * @param {Flashcard[]} cards
  */
-function saveCards(cards) {
+async function saveCards(cards) {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-    } catch (err) {
-        console.error('Failed to write to localStorage', err);
+        const db = await openDB();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
 
-        // Inform the user once per session
+            // Clear previous state so removed cards disappear.
+            store.clear();
+
+            for (const card of cards) {
+                store.put(card);
+            }
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Failed to write to IndexedDB', err);
+
         if (!saveCards._warned) {
-            alert(
-                '⚠️  Your browser is blocking local storage (often due to Private/Incognito mode).' +
-                '\nCards will work only until you close this tab.'
-            );
+            alert('⚠️  Failed to save cards to your browser storage. Changes will only last until you refresh this tab.');
             saveCards._warned = true;
         }
     }
@@ -558,15 +604,24 @@ if (cancelEditBtn) {
     });
 }
 
-let cards = loadCards();
+// All card data will reside here after asynchronous initialisation.
+let cards = [];
 
-renderCardList();
-let currentCard = null; // card object currently displayed
+// Card currently displayed during study mode
+let currentCard = null;
 
-// Default landing view: Study section
-startStudy();
-addSection.classList.add('hidden');
-studySection.classList.remove('hidden');
+// Kick-off once everything is parsed. By placing this at the end of the file
+// we make sure all functions & event-listeners are already defined.
+(async function init() {
+    cards = await loadCards();
+
+    renderCardList();
+
+    // Default landing view: Study section
+    startStudy();
+    addSection.classList.add('hidden');
+    studySection.classList.remove('hidden');
+})();
 
 // ---- Navigation ----
 navAdd.addEventListener('click', () => {
