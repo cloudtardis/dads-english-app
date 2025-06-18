@@ -21,8 +21,32 @@ function loadCards() {
  * Persist cards array to localStorage
  * @param {Flashcard[]} cards
  */
+/**
+ * Safely persist cards to localStorage. In environments where the Storage
+ * quota is unavailable (e.g. private-browsing in Safari / iOS) any attempt to
+ * write will throw a `DOMException`. Instead of letting the error bubble up –
+ * which would break the "Save Card" button with no feedback – we catch the
+ * exception and fall back to keeping the data only in-memory for the current
+ * session.  A visible warning is displayed so the user understands why the
+ * card is not being retained between sessions.
+ *
+ * @param {Flashcard[]} cards
+ */
 function saveCards(cards) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    } catch (err) {
+        console.error('Failed to write to localStorage', err);
+
+        // Inform the user once per session
+        if (!saveCards._warned) {
+            alert(
+                '⚠️  Your browser is blocking local storage (often due to Private/Incognito mode).' +
+                '\nCards will work only until you close this tab.'
+            );
+            saveCards._warned = true;
+        }
+    }
 }
 
 /**
@@ -59,6 +83,13 @@ const genSentenceBtn = document.getElementById('generate-sentence-btn');
 const genSentenceStatus = document.getElementById('gen-sentence-status');
 const genVoiceBtn = document.getElementById('generate-voice-trans-btn');
 const genVoiceStatus = document.getElementById('gen-voice-status');
+
+// Button & status for paragraph voice generation
+const genParagraphVoiceBtn = document.getElementById('generate-paragraph-voice-btn');
+const genParagraphVoiceStatus = document.getElementById('gen-paragraph-voice-status');
+// Button & status for paragraph translation
+const genParagraphTranslationBtn = document.getElementById('generate-paragraph-translation-btn');
+const genParagraphTranslationStatus = document.getElementById('gen-paragraph-translation-status');
 
 let generatedAudioData = null; // dataURL produced by AI TTS if any
 
@@ -109,6 +140,70 @@ if (generateAudioBtn) {
         } finally {
             generateAudioBtn.disabled = false;
             setTimeout(() => generateStatus.classList.add('hidden'), 4000);
+        }
+    });
+}
+
+// ---- Generate paragraph voice (Australian female, slow) ----
+if (genParagraphVoiceBtn) {
+    genParagraphVoiceBtn.addEventListener('click', async () => {
+        const paragraph = questionInput.value.trim();
+        if (!paragraph) {
+            alert('Please type an English paragraph first.');
+            return;
+        }
+
+        let apiKey = getApiKey();
+        if (!apiKey) return;
+
+        try {
+            genParagraphVoiceStatus.classList.remove('hidden');
+            genParagraphVoiceStatus.textContent = 'Generating voice…';
+            genParagraphVoiceBtn.disabled = true;
+
+            const dataUrl = await generateTTS(paragraph, apiKey);
+            generatedAudioData = dataUrl;
+            if (audioInput) audioInput.value = '';
+            genParagraphVoiceStatus.textContent = 'Voice ready! (will be attached)';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate voice. Please check your API key/quota.');
+            genParagraphVoiceStatus.textContent = 'Error';
+        } finally {
+            genParagraphVoiceBtn.disabled = false;
+            setTimeout(() => genParagraphVoiceStatus.classList.add('hidden'), 4000);
+        }
+    });
+}
+
+// ---- Generate paragraph translation (Traditional Chinese) ----
+if (genParagraphTranslationBtn) {
+    genParagraphTranslationBtn.addEventListener('click', async () => {
+        const paragraph = questionInput.value.trim();
+        if (!paragraph) {
+            alert('Please type an English paragraph first.');
+            return;
+        }
+
+        let apiKey = getApiKey();
+        if (!apiKey) return;
+
+        try {
+            genParagraphTranslationStatus.classList.remove('hidden');
+            genParagraphTranslationStatus.textContent = 'Generating translation…';
+            genParagraphTranslationBtn.disabled = true;
+
+            const chinese = await translateToTraditionalChinese(paragraph, apiKey);
+            answerInput.value = chinese;
+
+            genParagraphTranslationStatus.textContent = 'Translation ready!';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate translation.');
+            genParagraphTranslationStatus.textContent = 'Error';
+        } finally {
+            genParagraphTranslationBtn.disabled = false;
+            setTimeout(() => genParagraphTranslationStatus.classList.add('hidden'), 4000);
         }
     });
 }
@@ -209,10 +304,10 @@ async function generateSentence(prompt, apiKey) {
     const payload = {
         model: 'gpt-3.5-turbo',
         messages: [
-            { role: 'system', content: 'You are an assistant who creates single medium-length English sentences suitable for ESL learners.' },
-            { role: 'user', content: `Create one medium-length English sentence (15-20 words) based on: "${prompt}". Do NOT include translations. Do NOT wrap in quotes.` }
+            { role: 'system', content: 'You are an assistant who creates longer English paragraphs (6-10 sentences) suitable for ESL learners.' },
+            { role: 'user', content: `Create one longer English paragraph (6-10 sentences) based on: "${prompt}". Do NOT include translations. Do NOT wrap in quotes.` }
         ],
-        max_tokens: 60,
+        max_tokens: 300,
         temperature: 0.7
     };
 
@@ -240,9 +335,9 @@ async function translateToTraditionalChinese(text, apiKey) {
         model: 'gpt-3.5-turbo',
         messages: [
             { role: 'system', content: 'You translate English to Traditional Chinese.' },
-            { role: 'user', content: `Translate the following sentence into Traditional Chinese only (no pinyin): \n"${text}"` }
+            { role: 'user', content: `Translate the following paragraph into Traditional Chinese only (no pinyin): \n"${text}"` }
         ],
-        max_tokens: 90,
+        max_tokens: 180,
         temperature: 0.3
     };
 
@@ -434,7 +529,7 @@ function beginEdit(id) {
 }
 
 function deleteCard(id) {
-    if (!confirm('Delete this card?')) return;
+    // Straight-forward deletion without confirmation dialog
     cards = cards.filter((c) => c.id !== id);
     saveCards(cards);
     renderCardList();
@@ -529,13 +624,12 @@ importFileInput.addEventListener('change', (e) => {
 
 // ---- Add card ----
 
-form.addEventListener('submit', (e) => {
-    e.preventDefault();
+if (saveCardBtn) {
+    saveCardBtn.addEventListener('click', async () => {
     const question = questionInput.value.trim();
     const answer = answerInput.value.trim();
     if (!question || !answer) return;
 
-    // Helper that actually saves/updates the card
     const handleData = (audioData) => {
         if (editingCardId) {
             updateExistingCard(editingCardId, question, answer, audioData);
@@ -545,24 +639,32 @@ form.addEventListener('submit', (e) => {
     };
 
     const file = audioInput ? audioInput.files[0] : null;
+    let audioData = null;
 
     if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => handleData(ev.target.result);
-        reader.readAsDataURL(file);
-    } else if (generatedAudioData) {
-        handleData(generatedAudioData);
-        generatedAudioData = null; // reset for next card
-    } else {
-        // if no new file picked and editing, keep previous audioData
-        if (editingCardId) {
-            const existing = cards.find(c => c.id === editingCardId);
-            handleData(existing ? existing.audioData : null);
-        } else {
-            handleData(null);
+        try {
+            audioData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (ev) => resolve(ev.target.result);
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+            });
+        } catch (err) {
+            console.error('Error reading attached audio file', err);
+            alert('Failed to read attached audio file.');
+            return;
         }
+    } else if (generatedAudioData) {
+        audioData = generatedAudioData;
+        generatedAudioData = null;
+    } else if (editingCardId) {
+        const existing = cards.find(c => c.id === editingCardId);
+        audioData = existing ? existing.audioData : null;
     }
+
+    handleData(audioData);
 });
+}
 
 function createCard(question, answer, audioData) {
     const card = {

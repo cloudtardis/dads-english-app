@@ -146,8 +146,8 @@ textarea {
 }
 
 #card-question {
-    font-weight: bold;
-    font-size: 1.5rem; /* increased for better readability */
+    font-weight: normal; /* improved readability – lighter weight */
+    font-size: 1.5rem; /* keep size for clarity */
 }
 
 #card-answer {
