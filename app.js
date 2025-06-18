@@ -377,17 +377,48 @@ async function generateSentence(prompt, apiKey) {
 }
 
 async function translateToTraditionalChinese(text, apiKey) {
+    // Break very long input into approximate 3500-char chunks so each request
+    // comfortably fits within token limits and avoids truncation. The
+    // resulting Chinese segments are then re-joined with blank lines,
+    // preserving paragraph structure.
+
+    const CHUNK_SIZE = 3500;
+    const chunks = [];
+    let buffer = '';
+
+    for (const line of text.split(/\n+/)) {
+        if (buffer.length + line.length + 1 > CHUNK_SIZE) {
+            if (buffer) {
+                chunks.push(buffer);
+                buffer = '';
+            }
+        }
+        buffer += (buffer ? '\n' : '') + line;
+    }
+    if (buffer) chunks.push(buffer);
+
+    const translations = [];
+    for (const chunk of chunks) {
+        translations.push(await translateChunk(chunk, apiKey));
+    }
+
+    return translations.join('\n\n');
+}
+
+async function translateChunk(englishText, apiKey) {
+    // Provide a generous max_tokens based on input length (chars * 1.5 ≈ tokens).
+    const maxTokens = Math.min(4096, Math.ceil(englishText.length * 1.5));
+
     const payload = {
-        model: 'gpt-3.5-turbo-16k', // larger context to avoid truncation
+        model: 'gpt-3.5-turbo-16k',
         messages: [
-            { role: 'system', content: 'You are a strict translator. Return ONLY the full Traditional Chinese translation of the user provided text. Preserve paragraph breaks. Do NOT omit or summarise any part.' },
-            { role: 'user', content: `請完整翻譯下列內容為繁體中文（僅中文、請保留段落換行）：\n\n${text}` }
+            { role: 'system', content: 'You are a strict translator. Return ONLY the full Traditional Chinese translation of the user provided text. Preserve paragraph breaks. Do NOT omit or summarise.' },
+            { role: 'user', content: `請完整翻譯下列內容為繁體中文（僅中文、請保留段落換行）：\n\n${englishText}` }
         ],
-        temperature: 0.2
-        // deliberately omit max_tokens so the API can allocate as needed
+        temperature: 0.2,
+        max_tokens: maxTokens
     };
 
-    // Translation can be a bit slower – allow up to 60 s
     const resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
