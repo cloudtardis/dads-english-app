@@ -437,6 +437,17 @@ function stopAudio() {
     }
 }
 
+// helper to set up looping playback with 5s pause between repeats
+function setupAudioLooping() {
+    if (!cardAudio) return;
+    cardAudio.onended = () => {
+        audioLoopTimeout = setTimeout(() => {
+            cardAudio.currentTime = 0;
+            cardAudio.play().catch(() => {/* autoplay may be blocked */});
+        }, 5000); // 5 second pause before replay
+    };
+}
+
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
@@ -750,13 +761,7 @@ function showNextCard() {
         cardAudio.src = currentCard.audioData;
         cardAudio.load();
 
-        cardAudio.onended = () => {
-            audioLoopTimeout = setTimeout(() => {
-                cardAudio.currentTime = 0;
-                cardAudio.play().catch(() => {/* autoplay may be blocked */});
-            }, 5000); // 5-second pause before replay
-        };
-
+        setupAudioLooping();
         cardAudio.play().catch(() => {/* autoplay might be blocked */});
         if (audioToggleBtn) {
             audioToggleBtn.classList.remove('hidden');
@@ -785,6 +790,7 @@ showAnswerBtn.addEventListener('click', revealAnswer);
 if (audioToggleBtn) {
     audioToggleBtn.addEventListener('click', () => {
         if (cardAudio.paused) {
+            setupAudioLooping();
             cardAudio.play().catch(() => {});
         } else {
             stopAudio();
