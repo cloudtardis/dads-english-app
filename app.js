@@ -882,10 +882,14 @@ showAnswerBtn.addEventListener('click', revealAnswer);
 if (audioToggleBtn) {
     audioToggleBtn.addEventListener('click', () => {
         if (cardAudio.paused) {
+            // Resume playback from current position
             setupAudioLooping();
             cardAudio.play().catch(() => {});
         } else {
-            stopAudio();
+            // Just pause – don't reset to the beginning
+            clearTimeout(audioLoopTimeout);
+            audioLoopTimeout = null;
+            cardAudio.pause();
         }
     });
     cardAudio.addEventListener('play', () => {
