@@ -483,6 +483,7 @@ const cardAudio = document.getElementById('card-audio');
 const audioToggleBtn = document.getElementById('audio-toggle-btn');
 const rewindBtn = document.getElementById('rewind-5-btn');
 const restartBtn = document.getElementById('restart-btn');
+const speedToggleBtn = document.getElementById('speed-toggle-btn');
 const showAnswerBtn = document.getElementById('show-answer');
 const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
@@ -529,6 +530,7 @@ function setupAudioLooping() {
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
+let slowPlayback = false; // global playback speed state
 
 let editingCardId = null; // if not null, we're editing existing card
 
@@ -848,6 +850,8 @@ function showNextCard() {
         cardAudio.src = currentCard.audioData;
         cardAudio.load();
 
+        cardAudio.playbackRate = slowPlayback ? 0.8 : 1;
+
         setupAudioLooping();
         cardAudio.play().catch(() => {/* autoplay might be blocked */});
         if (audioToggleBtn) {
@@ -860,6 +864,10 @@ function showNextCard() {
         if (restartBtn) {
             restartBtn.classList.remove('hidden');
         }
+        if (speedToggleBtn) {
+            speedToggleBtn.classList.remove('hidden');
+            speedToggleBtn.textContent = slowPlayback ? '0.8x' : '1x';
+        }
     } else {
         cardAudio.removeAttribute('src');
         cardAudio.load();
@@ -871,6 +879,9 @@ function showNextCard() {
         }
         if (restartBtn) {
             restartBtn.classList.add('hidden');
+        }
+        if (speedToggleBtn) {
+            speedToggleBtn.classList.add('hidden');
         }
     }
 
@@ -923,6 +934,15 @@ if (restartBtn) {
         if (!cardAudio.paused) {
             cardAudio.play().catch(() => {});
         }
+    });
+}
+
+// Playback speed toggle (1x / 0.8x)
+if (speedToggleBtn) {
+    speedToggleBtn.addEventListener('click', () => {
+        slowPlayback = !slowPlayback;
+        cardAudio.playbackRate = slowPlayback ? 0.8 : 1;
+        speedToggleBtn.textContent = slowPlayback ? '0.8x' : '1x';
     });
 }
 
