@@ -530,7 +530,7 @@ function setupAudioLooping() {
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
-let slowPlayback = false; // global playback speed state
+let fastPlayback = false; // global playback speed state (true = 1.2x)
 
 let editingCardId = null; // if not null, we're editing existing card
 
@@ -850,7 +850,7 @@ function showNextCard() {
         cardAudio.src = currentCard.audioData;
         cardAudio.load();
 
-        cardAudio.playbackRate = slowPlayback ? 0.8 : 1;
+        cardAudio.playbackRate = fastPlayback ? 1.2 : 1;
 
         setupAudioLooping();
         cardAudio.play().catch(() => {/* autoplay might be blocked */});
@@ -866,7 +866,7 @@ function showNextCard() {
         }
         if (speedToggleBtn) {
             speedToggleBtn.classList.remove('hidden');
-            speedToggleBtn.textContent = slowPlayback ? '0.8x' : '1x';
+            speedToggleBtn.textContent = fastPlayback ? '1.2x' : '1x';
         }
     } else {
         cardAudio.removeAttribute('src');
@@ -937,12 +937,12 @@ if (restartBtn) {
     });
 }
 
-// Playback speed toggle (1x / 0.8x)
+// Playback speed toggle (1x / 1.2x)
 if (speedToggleBtn) {
     speedToggleBtn.addEventListener('click', () => {
-        slowPlayback = !slowPlayback;
-        cardAudio.playbackRate = slowPlayback ? 0.8 : 1;
-        speedToggleBtn.textContent = slowPlayback ? '0.8x' : '1x';
+        fastPlayback = !fastPlayback;
+        cardAudio.playbackRate = fastPlayback ? 1.2 : 1;
+        speedToggleBtn.textContent = fastPlayback ? '1.2x' : '1x';
     });
 }
 
