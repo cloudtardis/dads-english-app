@@ -111,8 +111,10 @@ async function saveCards(cards) {
 const addSection = document.getElementById('add-section');
 const studySection = document.getElementById('study-section');
 
+const reviewSection = document.getElementById("review-section");
 const navAdd = document.getElementById('nav-add');
 const navStudy = document.getElementById('nav-study');
+const navReview = document.getElementById("nav-review");
 const navExport = document.getElementById('nav-export');
 const navImport = document.getElementById('nav-import');
 const importFileInput = document.getElementById('import-file');
@@ -489,6 +491,17 @@ const cardList = document.getElementById('card-list');
 const saveCardBtn = document.getElementById('save-card-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const noDueEl = document.getElementById('no-due');
+const reviewList = document.getElementById("review-list");
+const reviewCardBox = document.getElementById("review-card-box");
+const reviewCardQuestionEl = document.getElementById("review-card-question");
+const reviewCardAnswerEl = document.getElementById("review-card-answer");
+const reviewRevealArea = document.getElementById("review-reveal-area");
+const reviewAudio = document.getElementById("review-card-audio");
+const reviewAudioToggleBtn = document.getElementById("review-audio-toggle-btn");
+const reviewRewindBtn = document.getElementById("review-rewind-5-btn");
+const reviewRestartBtn = document.getElementById("review-restart-btn");
+const reviewSpeedToggleBtn = document.getElementById("review-speed-toggle-btn");
+const reviewShowAnswerBtn = document.getElementById("review-show-answer");
 const saveStatusEl = document.getElementById('save-status');
 
 function autoSaveCard(question, answer, audioData) {
@@ -512,11 +525,30 @@ function stopAudio() {
     if (audioToggleBtn) {
         audioToggleBtn.textContent = '▶️';
     }
-
-
 }
 
-// helper to set up looping playback with 5s pause between repeats
+function stopReviewAudio() {
+    clearTimeout(reviewAudioLoopTimeout);
+    reviewAudioLoopTimeout = null;
+    if (reviewAudio) {
+        reviewAudio.pause();
+        reviewAudio.onended = null;
+        reviewAudio.currentTime = 0;
+    }
+    if (reviewAudioToggleBtn) {
+        reviewAudioToggleBtn.textContent = "▶️";
+    }
+}
+
+function setupReviewAudioLooping() {
+    if (!reviewAudio) return;
+    reviewAudio.onended = () => {
+        reviewAudioLoopTimeout = setTimeout(() => {
+            reviewAudio.currentTime = 0;
+            reviewAudio.play().catch(() => {});
+        }, 5000);
+    };
+}
 function setupAudioLooping() {
     if (!cardAudio) return;
     cardAudio.onended = () => {
@@ -530,6 +562,7 @@ function setupAudioLooping() {
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
+let reviewAudioLoopTimeout = null;
 let fastPlayback = false; // global playback speed state (true = 1.2x)
 
 let editingCardId = null; // if not null, we're editing existing card
@@ -602,6 +635,24 @@ function renderCardList() {
         cardList.appendChild(li);
     });
 }
+function renderReviewList() {
+    if (!reviewList) return;
+    reviewList.innerHTML = "";
+    if (cards.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No cards yet.";
+        reviewList.appendChild(li);
+        return;
+    }
+    const sorted = [...cards].sort((a, b) => a.question.localeCompare(b.question));
+    sorted.forEach(card => {
+        const li = document.createElement("li");
+        li.textContent = card.question.length > 60 ? card.question.slice(0,60) + "…" : card.question;
+        li.addEventListener("click", () => openReviewCard(card.id));
+        reviewList.appendChild(li);
+    });
+}
+
 
 function beginEdit(id) {
     const card = cards.find((c) => c.id === id);
@@ -624,6 +675,7 @@ function deleteCard(id) {
     cards = cards.filter((c) => c.id !== id);
     saveCards(cards);
     renderCardList();
+    renderReviewList();
     updateDueCount();
 }
 
@@ -643,6 +695,7 @@ let cards = [];
 
 // Card currently displayed during study mode
 let currentCard = null;
+let currentReviewCard = null;
 
 // Kick-off once everything is parsed. By placing this at the end of the file
 // we make sure all functions & event-listeners are already defined.
@@ -650,15 +703,19 @@ let currentCard = null;
     cards = await loadCards();
 
     renderCardList();
+    renderReviewList();
 
+    renderReviewList();
     // Default landing view: Study section
     startStudy();
+    reviewSection.classList.add("hidden");
     addSection.classList.add('hidden');
     studySection.classList.remove('hidden');
 })();
 
 // ---- Navigation ----
 navAdd.addEventListener('click', () => {
+    reviewSection.classList.add("hidden");
     stopAudio();
     addSection.classList.remove('hidden');
     studySection.classList.add('hidden');
@@ -666,10 +723,19 @@ navAdd.addEventListener('click', () => {
 
 navStudy.addEventListener('click', () => {
     startStudy();
+    reviewSection.classList.add("hidden");
     addSection.classList.add('hidden');
     studySection.classList.remove('hidden');
 });
 
+navReview.addEventListener("click", () => {
+    stopAudio();
+    stopReviewAudio();
+    addSection.classList.add("hidden");
+    studySection.classList.add("hidden");
+    reviewSection.classList.remove("hidden");
+    renderReviewList();
+});
 navExport.addEventListener('click', () => {
     const dataStr = 'data:text/json;charset=utf-8,' +
         encodeURIComponent(JSON.stringify(cards, null, 2));
@@ -709,6 +775,7 @@ importFileInput.addEventListener('change', (e) => {
                 cards = imported;
                 saveCards(cards);
                 renderCardList();
+    renderReviewList();
                 alert('Import successful!');
             } else {
                 alert('Invalid file');
@@ -789,6 +856,8 @@ function createCard(question, answer, audioData) {
     showSavedStatus('Card saved!');
 
     renderCardList();
+    renderReviewList();
+    renderReviewList();
 }
 
 function updateExistingCard(id, question, answer, audioData) {
@@ -813,11 +882,13 @@ function updateExistingCard(id, question, answer, audioData) {
     showSavedStatus('Card updated!');
 
     renderCardList();
+    renderReviewList();
 }
 
 // ---- Study flow ----
 
 function startStudy() {
+    reviewSection.classList.add("hidden");
     updateDueCount();
     showNextCard();
 }
@@ -892,6 +963,42 @@ function revealAnswer() {
     revealArea.classList.remove('hidden');
     showAnswerBtn.classList.add('hidden');
 }
+function openReviewCard(id) {
+    const card = cards.find(c => c.id === id);
+    if (!card) return;
+    currentReviewCard = card;
+    reviewRevealArea.classList.add("hidden");
+    reviewShowAnswerBtn.classList.remove("hidden");
+    stopReviewAudio();
+    reviewCardQuestionEl.textContent = card.question;
+    reviewCardAnswerEl.textContent = card.answer;
+    if (card.audioData) {
+        reviewAudio.src = card.audioData;
+        reviewAudio.load();
+        reviewAudio.playbackRate = fastPlayback ? 1.2 : 1;
+        setupReviewAudioLooping();
+        reviewAudio.play().catch(() => {});
+        reviewAudioToggleBtn.classList.remove("hidden");
+        reviewRewindBtn.classList.remove("hidden");
+        reviewRestartBtn.classList.remove("hidden");
+        reviewSpeedToggleBtn.classList.remove("hidden");
+        reviewSpeedToggleBtn.textContent = fastPlayback ? "1.2x" : "1x";
+    } else {
+        reviewAudio.removeAttribute("src");
+        reviewAudio.load();
+        reviewAudioToggleBtn.classList.add("hidden");
+        reviewRewindBtn.classList.add("hidden");
+        reviewRestartBtn.classList.add("hidden");
+        reviewSpeedToggleBtn.classList.add("hidden");
+    }
+    reviewCardBox.classList.remove("hidden");
+}
+
+function revealReviewAnswer() {
+    reviewRevealArea.classList.remove("hidden");
+    reviewShowAnswerBtn.classList.add("hidden");
+}
+
 
 // Reveal answer via question click or explicit button
 cardQuestionEl.addEventListener('click', revealAnswer);
@@ -959,6 +1066,48 @@ ratingButtons.forEach((btn) => {
     });
 });
 
+reviewCardQuestionEl.addEventListener("click", revealReviewAnswer);
+reviewShowAnswerBtn.addEventListener("click", revealReviewAnswer);
+if (reviewAudioToggleBtn) {
+    reviewAudioToggleBtn.addEventListener("click", () => {
+        if (reviewAudio.paused) {
+            setupReviewAudioLooping();
+            reviewAudio.play().catch(() => {});
+        } else {
+            clearTimeout(reviewAudioLoopTimeout);
+            reviewAudioLoopTimeout = null;
+            reviewAudio.pause();
+        }
+    });
+    reviewAudio.addEventListener("play", () => {
+        reviewAudioToggleBtn.textContent = "⏸️";
+    });
+    reviewAudio.addEventListener("pause", () => {
+        reviewAudioToggleBtn.textContent = "▶️";
+    });
+}
+if (reviewRewindBtn) {
+    reviewRewindBtn.addEventListener("click", () => {
+        if (!reviewAudio.duration) return;
+        reviewAudio.currentTime = Math.max(0, reviewAudio.currentTime - 5);
+    });
+}
+if (reviewRestartBtn) {
+    reviewRestartBtn.addEventListener("click", () => {
+        if (!reviewAudio.duration) return;
+        reviewAudio.currentTime = 0;
+        if (!reviewAudio.paused) {
+            reviewAudio.play().catch(() => {});
+        }
+    });
+}
+if (reviewSpeedToggleBtn) {
+    reviewSpeedToggleBtn.addEventListener("click", () => {
+        fastPlayback = !fastPlayback;
+        reviewAudio.playbackRate = fastPlayback ? 1.2 : 1;
+        reviewSpeedToggleBtn.textContent = fastPlayback ? "1.2x" : "1x";
+    });
+}
 // SM-2 algorithm implementation
 function processRating(card, quality) {
     // Quality 0-5

@@ -11,6 +11,7 @@
         <h1>Spaced-Repetition Flashcards</h1>
         <nav>
             <button id="nav-study">Study</button>
+            <button id="nav-review">Review</button>
             <button id="nav-add">Add Cards</button>
             <button id="nav-export" class="small-nav">Export</button>
             <button id="nav-import" class="small-nav">Import</button>
@@ -63,6 +64,26 @@
             <h3>Your Cards</h3>
             <ul id="card-list"></ul>
             <p class="note">Cards are stored locally in your browser (IndexedDB).</p>
+        </section>
+        <!-- Review section -->
+        <section id="review-section" class="hidden">
+            <h2>Review Cards</h2>
+            <ul id="review-list"></ul>
+            <div id="review-card-box" class="hidden">
+                <p id="review-card-question"></p>
+                <audio id="review-card-audio"></audio>
+                <div class="audio-controls">
+                    <button id="review-restart-btn" class="secondary-btn hidden" title="Restart">⏮️</button>
+                    <button id="review-rewind-5-btn" class="secondary-btn hidden">⏪ 5s</button>
+                    <button id="review-audio-toggle-btn" class="secondary-btn hidden" title="Play/Pause">▶️</button>
+                    <button id="review-speed-toggle-btn" class="secondary-btn hidden" title="Toggle between normal and 1.2x speed">1x</button>
+                </div>
+                <button id="review-show-answer" class="primary-btn">Show Answer</button>
+                <div id="review-reveal-area" class="hidden">
+                    <hr />
+                    <p id="review-card-answer"></p>
+                </div>
+            </div>
         </section>
 
         <!-- Study section -->
