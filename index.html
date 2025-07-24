@@ -10,8 +10,8 @@
     <header>
         <h1>Spaced-Repetition Flashcards</h1>
         <nav>
-            <button id="nav-study">Study</button>
-            <button id="nav-review">Review</button>
+            <button id="nav-study">Test</button>
+            <button id="nav-review">Study</button>
             <button id="nav-add">Add Cards</button>
             <button id="nav-export" class="small-nav">Export</button>
             <button id="nav-import" class="small-nav">Import</button>
@@ -65,9 +65,9 @@
             <ul id="card-list"></ul>
             <p class="note">Cards are stored locally in your browser (IndexedDB).</p>
         </section>
-        <!-- Review section -->
+        <!-- Study section -->
         <section id="review-section" class="hidden">
-            <h2>Review Cards</h2>
+            <h2>Study Cards</h2>
             <ul id="review-list"></ul>
             <div id="review-card-box" class="hidden">
                 <p id="review-card-question"></p>
@@ -86,9 +86,9 @@
             </div>
         </section>
 
-        <!-- Study section -->
+        <!-- Test section -->
         <section id="study-section" class="active">
-            <h2>Study</h2>
+            <h2>Test</h2>
             <div id="study-area">
                 <p id="due-count"></p>
                 <button id="skip-day-btn" class="secondary-btn">Skip One Day</button>
