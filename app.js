@@ -49,7 +49,14 @@ async function loadCards() {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
             const req = store.getAll();
-            req.onsuccess = () => resolve(req.result || []);
+            req.onsuccess = () => {
+                const result = req.result || [];
+                // Ensure newer fields exist
+                for (const card of result) {
+                    if (typeof card.pinned !== 'boolean') card.pinned = false;
+                }
+                resolve(result);
+            };
             req.onerror = () => reject(req.error);
         });
     } catch (err) {
@@ -644,11 +651,30 @@ function renderReviewList() {
         reviewList.appendChild(li);
         return;
     }
-    const sorted = [...cards].sort((a, b) => a.question.localeCompare(b.question));
+    const sorted = [...cards].sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return a.question.localeCompare(b.question);
+    });
     sorted.forEach(card => {
         const li = document.createElement("li");
-        li.textContent = card.question.length > 60 ? card.question.slice(0,60) + "…" : card.question;
+        const textSpan = document.createElement("span");
+        textSpan.textContent = card.question.length > 60 ? card.question.slice(0,60) + "…" : card.question;
+        li.appendChild(textSpan);
         li.addEventListener("click", () => openReviewCard(card.id));
+
+        const pinBtn = document.createElement("button");
+        pinBtn.className = "pin-btn" + (card.pinned ? " pinned" : "");
+        pinBtn.textContent = card.pinned ? "📌" : "📍";
+        pinBtn.title = card.pinned ? "Unpin" : "Pin";
+        pinBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            card.pinned = !card.pinned;
+            saveCards(cards);
+            renderReviewList();
+        });
+        li.appendChild(pinBtn);
+
         reviewList.appendChild(li);
     });
 }
@@ -772,10 +798,10 @@ importFileInput.addEventListener('change', (e) => {
         try {
             const imported = JSON.parse(ev.target.result);
             if (Array.isArray(imported)) {
-                cards = imported;
+                cards = imported.map(c => ({...c, pinned: !!c.pinned}));
                 saveCards(cards);
                 renderCardList();
-    renderReviewList();
+                renderReviewList();
                 alert('Import successful!');
             } else {
                 alert('Invalid file');
@@ -842,7 +868,8 @@ function createCard(question, answer, audioData) {
         interval: 0,
         repetitions: 0,
         easeFactor: 2.5,
-        nextReview: Date.now()
+        nextReview: Date.now(),
+        pinned: false
     };
     cards.push(card);
     saveCards(cards);
