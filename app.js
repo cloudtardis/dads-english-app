@@ -52,9 +52,10 @@ async function loadCards() {
             req.onsuccess = () => {
                 const result = req.result || [];
                 // Ensure newer fields exist
-                for (const card of result) {
+                result.forEach((card, idx) => {
                     if (typeof card.pinned !== 'boolean') card.pinned = false;
-                }
+                    if (typeof card.order !== 'number') card.order = idx;
+                });
                 resolve(result);
             };
             req.onerror = () => reject(req.error);
@@ -102,6 +103,13 @@ async function saveCards(cards) {
     }
 }
 
+function normalizeOrders() {
+    const pinned = cards.filter(c => c.pinned).sort((a, b) => a.order - b.order);
+    const unpinned = cards.filter(c => !c.pinned).sort((a, b) => a.order - b.order);
+    cards = [...pinned, ...unpinned];
+    cards.forEach((c, idx) => c.order = idx);
+}
+
 /**
  * @typedef Flashcard
  * @property {string} id - unique id
@@ -112,6 +120,8 @@ async function saveCards(cards) {
  * @property {number} repetitions - how many times reviewed successfully
  * @property {number} easeFactor - difficulty factor (EF)
  * @property {number} nextReview - timestamp (ms) when due
+ * @property {boolean} pinned - whether the card is pinned to the top of lists
+ * @property {number} order - manual sort order within pinned/unpinned groups
  */
 
 // DOM references
@@ -651,17 +661,24 @@ function renderReviewList() {
         reviewList.appendChild(li);
         return;
     }
-    const sorted = [...cards].sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return a.question.localeCompare(b.question);
-    });
+    const sorted = [...cards].sort((a, b) => a.order - b.order);
     sorted.forEach(card => {
         const li = document.createElement("li");
         const textSpan = document.createElement("span");
         textSpan.textContent = card.question.length > 60 ? card.question.slice(0,60) + "…" : card.question;
         li.appendChild(textSpan);
         li.addEventListener("click", () => openReviewCard(card.id));
+
+        li.draggable = true;
+        li.dataset.id = card.id;
+        li.addEventListener('dragstart', () => {
+            dragSrcId = card.id;
+            li.classList.add('dragging');
+        });
+        li.addEventListener('dragend', () => {
+            dragSrcId = null;
+            li.classList.remove('dragging');
+        });
 
         const pinBtn = document.createElement("button");
         pinBtn.className = "pin-btn" + (card.pinned ? " pinned" : "");
@@ -670,6 +687,14 @@ function renderReviewList() {
         pinBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             card.pinned = !card.pinned;
+            if (card.pinned) {
+                const minPinned = Math.min(...cards.filter(c => c.pinned && c.id !== card.id).map(c => c.order), Infinity);
+                card.order = isFinite(minPinned) ? minPinned - 1 : 0;
+            } else {
+                const maxOrder = Math.max(...cards.map(c => c.order));
+                card.order = maxOrder + 1;
+            }
+            normalizeOrders();
             saveCards(cards);
             renderReviewList();
         });
@@ -677,6 +702,62 @@ function renderReviewList() {
 
         reviewList.appendChild(li);
     });
+
+    if (!reviewList._dragBound) {
+        reviewList.addEventListener('dragover', (e) => e.preventDefault());
+        reviewList.addEventListener('drop', handleReviewDrop);
+        reviewList._dragBound = true;
+    }
+}
+
+function handleReviewDrop(e) {
+    e.preventDefault();
+    if (!dragSrcId) return;
+    const targetLi = e.target.closest('li');
+    const dragged = cards.find(c => c.id === dragSrcId);
+    if (!dragged) return;
+
+    const pinned = cards.filter(c => c.pinned).sort((a, b) => a.order - b.order);
+    const unpinned = cards.filter(c => !c.pinned).sort((a, b) => a.order - b.order);
+
+    if (targetLi) {
+        const targetId = targetLi.dataset.id;
+        const target = cards.find(c => c.id === targetId);
+        if (target) {
+            if (dragged.pinned !== target.pinned) {
+                if (dragged.pinned) {
+                    const fromIndex = pinned.findIndex(c => c.id === dragSrcId);
+                    pinned.splice(fromIndex, 1);
+                    pinned.push(dragged);
+                } else {
+                    const fromIndex = unpinned.findIndex(c => c.id === dragSrcId);
+                    unpinned.splice(fromIndex, 1);
+                    unpinned.unshift(dragged);
+                }
+            } else {
+                const group = dragged.pinned ? pinned : unpinned;
+                const fromIndex = group.findIndex(c => c.id === dragSrcId);
+                const toIndex = group.findIndex(c => c.id === targetId);
+                group.splice(fromIndex, 1);
+                group.splice(toIndex, 0, dragged);
+            }
+        }
+    } else {
+        if (dragged.pinned) {
+            const fromIndex = pinned.findIndex(c => c.id === dragSrcId);
+            pinned.splice(fromIndex, 1);
+            pinned.push(dragged);
+        } else {
+            const fromIndex = unpinned.findIndex(c => c.id === dragSrcId);
+            unpinned.splice(fromIndex, 1);
+            unpinned.push(dragged);
+        }
+    }
+
+    cards = [...pinned, ...unpinned];
+    normalizeOrders();
+    saveCards(cards);
+    renderReviewList();
 }
 
 
@@ -722,11 +803,14 @@ let cards = [];
 // Card currently displayed during study mode
 let currentCard = null;
 let currentReviewCard = null;
+let dragSrcId = null;
 
 // Kick-off once everything is parsed. By placing this at the end of the file
 // we make sure all functions & event-listeners are already defined.
 (async function init() {
     cards = await loadCards();
+    normalizeOrders();
+    saveCards(cards);
 
     renderCardList();
     renderReviewList();
@@ -798,7 +882,12 @@ importFileInput.addEventListener('change', (e) => {
         try {
             const imported = JSON.parse(ev.target.result);
             if (Array.isArray(imported)) {
-                cards = imported.map(c => ({...c, pinned: !!c.pinned}));
+                cards = imported.map((c, idx) => ({
+                    ...c,
+                    pinned: !!c.pinned,
+                    order: typeof c.order === 'number' ? c.order : idx
+                }));
+                normalizeOrders();
                 saveCards(cards);
                 renderCardList();
                 renderReviewList();
@@ -860,6 +949,7 @@ if (saveCardBtn) {
 }
 
 function createCard(question, answer, audioData) {
+    const maxOrder = cards.reduce((m, c) => Math.max(m, typeof c.order === 'number' ? c.order : -1), -1);
     const card = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2),
         question,
@@ -869,9 +959,11 @@ function createCard(question, answer, audioData) {
         repetitions: 0,
         easeFactor: 2.5,
         nextReview: Date.now(),
-        pinned: false
+        pinned: false,
+        order: maxOrder + 1
     };
     cards.push(card);
+    normalizeOrders();
     saveCards(cards);
 
     // reset form
