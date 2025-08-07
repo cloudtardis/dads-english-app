@@ -177,6 +177,10 @@ textarea {
     color: #333;
 }
 
+#review-list li.dragging {
+    opacity: 0.5;
+}
+
 #review-card-box {
     background: white;
     padding: 1rem;
