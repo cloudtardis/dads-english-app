@@ -545,8 +545,8 @@ function stopAudio() {
 }
 
 function stopReviewAudio() {
-    clearTimeout(reviewAudioLoopTimeout);
-    reviewAudioLoopTimeout = null;
+    clearTimeout(reviewAudioAdvanceTimeout);
+    reviewAudioAdvanceTimeout = null;
     if (reviewAudio) {
         reviewAudio.pause();
         reviewAudio.onended = null;
@@ -557,14 +557,34 @@ function stopReviewAudio() {
     }
 }
 
-function setupReviewAudioLooping() {
+function setupReviewAutoAdvance() {
     if (!reviewAudio) return;
     reviewAudio.onended = () => {
-        reviewAudioLoopTimeout = setTimeout(() => {
-            reviewAudio.currentTime = 0;
-            reviewAudio.play().catch(() => {});
-        }, 5000);
+        clearTimeout(reviewAudioAdvanceTimeout);
+        reviewAudioAdvanceTimeout = setTimeout(() => {
+            advanceToNextReviewCard();
+        }, 500);
     };
+}
+
+function advanceToNextReviewCard() {
+    const orderedIds = getCardsInReviewOrder().map(card => card.id);
+    reviewPlaybackOrder = orderedIds;
+    if (reviewPlaybackOrder.length === 0) return;
+
+    if (currentReviewCard) {
+        const currentIndex = reviewPlaybackOrder.indexOf(currentReviewCard.id);
+        if (currentIndex !== -1) {
+            reviewPlaybackIndex = currentIndex;
+        }
+    }
+
+    reviewPlaybackIndex = (reviewPlaybackIndex + 1 + reviewPlaybackOrder.length) % reviewPlaybackOrder.length;
+    const nextId = reviewPlaybackOrder[reviewPlaybackIndex];
+    const nextCard = cards.find(c => c.id === nextId);
+    if (nextCard) {
+        openReviewCard(nextCard.id);
+    }
 }
 function setupAudioLooping() {
     if (!cardAudio) return;
@@ -579,8 +599,11 @@ function setupAudioLooping() {
 const ratingButtons = document.querySelectorAll('.rating-buttons button');
 
 let audioLoopTimeout = null;
-let reviewAudioLoopTimeout = null;
+let reviewAudioAdvanceTimeout = null;
 let fastPlayback = false; // global playback speed state (true = 1.2x)
+
+let reviewPlaybackOrder = [];
+let reviewPlaybackIndex = -1;
 
 let editingCardId = null; // if not null, we're editing existing card
 
@@ -652,6 +675,10 @@ function renderCardList() {
         cardList.appendChild(li);
     });
 }
+function getCardsInReviewOrder() {
+    return [...cards].sort((a, b) => a.order - b.order);
+}
+
 function renderReviewList() {
     if (!reviewList) return;
     reviewList.innerHTML = "";
@@ -659,9 +686,11 @@ function renderReviewList() {
         const li = document.createElement("li");
         li.textContent = "No cards yet.";
         reviewList.appendChild(li);
+        reviewPlaybackOrder = [];
+        reviewPlaybackIndex = -1;
         return;
     }
-    const sorted = [...cards].sort((a, b) => a.order - b.order);
+    const sorted = getCardsInReviewOrder();
     sorted.forEach(card => {
         const li = document.createElement("li");
         const textSpan = document.createElement("span");
@@ -707,6 +736,11 @@ function renderReviewList() {
         reviewList.addEventListener('dragover', (e) => e.preventDefault());
         reviewList.addEventListener('drop', handleReviewDrop);
         reviewList._dragBound = true;
+    }
+
+    reviewPlaybackOrder = sorted.map(card => card.id);
+    if (currentReviewCard) {
+        reviewPlaybackIndex = reviewPlaybackOrder.indexOf(currentReviewCard.id);
     }
 }
 
@@ -1085,6 +1119,11 @@ function revealAnswer() {
 function openReviewCard(id) {
     const card = cards.find(c => c.id === id);
     if (!card) return;
+    reviewPlaybackOrder = getCardsInReviewOrder().map(c => c.id);
+    reviewPlaybackIndex = reviewPlaybackOrder.indexOf(card.id);
+    if (reviewPlaybackIndex === -1 && reviewPlaybackOrder.length > 0) {
+        reviewPlaybackIndex = 0;
+    }
     currentReviewCard = card;
     reviewRevealArea.classList.add("hidden");
     reviewShowAnswerBtn.classList.remove("hidden");
@@ -1095,7 +1134,7 @@ function openReviewCard(id) {
         reviewAudio.src = card.audioData;
         reviewAudio.load();
         reviewAudio.playbackRate = fastPlayback ? 1.2 : 1;
-        setupReviewAudioLooping();
+        setupReviewAutoAdvance();
         reviewAudio.play().catch(() => {});
         reviewAudioToggleBtn.classList.remove("hidden");
         reviewRewindBtn.classList.remove("hidden");
@@ -1190,15 +1229,19 @@ reviewShowAnswerBtn.addEventListener("click", revealReviewAnswer);
 if (reviewAudioToggleBtn) {
     reviewAudioToggleBtn.addEventListener("click", () => {
         if (reviewAudio.paused) {
-            setupReviewAudioLooping();
+            clearTimeout(reviewAudioAdvanceTimeout);
+            reviewAudioAdvanceTimeout = null;
+            setupReviewAutoAdvance();
             reviewAudio.play().catch(() => {});
         } else {
-            clearTimeout(reviewAudioLoopTimeout);
-            reviewAudioLoopTimeout = null;
+            clearTimeout(reviewAudioAdvanceTimeout);
+            reviewAudioAdvanceTimeout = null;
             reviewAudio.pause();
         }
     });
     reviewAudio.addEventListener("play", () => {
+        clearTimeout(reviewAudioAdvanceTimeout);
+        reviewAudioAdvanceTimeout = null;
         reviewAudioToggleBtn.textContent = "⏸️";
     });
     reviewAudio.addEventListener("pause", () => {
@@ -1208,12 +1251,16 @@ if (reviewAudioToggleBtn) {
 if (reviewRewindBtn) {
     reviewRewindBtn.addEventListener("click", () => {
         if (!reviewAudio.duration) return;
+        clearTimeout(reviewAudioAdvanceTimeout);
+        reviewAudioAdvanceTimeout = null;
         reviewAudio.currentTime = Math.max(0, reviewAudio.currentTime - 5);
     });
 }
 if (reviewRestartBtn) {
     reviewRestartBtn.addEventListener("click", () => {
         if (!reviewAudio.duration) return;
+        clearTimeout(reviewAudioAdvanceTimeout);
+        reviewAudioAdvanceTimeout = null;
         reviewAudio.currentTime = 0;
         if (!reviewAudio.paused) {
             reviewAudio.play().catch(() => {});
